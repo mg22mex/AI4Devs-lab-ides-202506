@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,8 +10,241 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// User domain
 model User {
-  id    Int     @id @default(autoincrement())
-  email String  @unique
-  name  String?
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  firstName String
+  lastName  String
+  role      UserRole @default(RECRUITER)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  
+  // Audit fields
+  createdBy String?
+  updatedBy String?
+
+  @@map("users")
 }
+
+enum UserRole {
+  ADMIN
+  RECRUITER
+  HIRING_MANAGER
+  INTERVIEWER
+}
+
+// Company domain
+model Company {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  website     String?
+  industry    String?
+  size        CompanySize?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  users       User[]
+  jobs        Job[]
+
+  // Audit fields
+  createdBy String?
+  updatedBy String?
+
+  @@map("companies")
+}
+
+enum CompanySize {
+  STARTUP
+  SMALL
+  MEDIUM
+  LARGE
+  ENTERPRISE
+}
+
+// Candidate domain
+model Candidate {
+  id          String   @id @default(cuid())
+  firstName   String
+  lastName    String
+  email       String   @unique
+  phone       String?
+  address     String?
+  city        String?
+  state       String?
+  country     String?
+  zipCode     String?
+  linkedinUrl String?
+  portfolioUrl String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  education   Education[]
+  experience  Experience[]
+  applications Application[]
+  files       File[]
+
+  // Audit fields
+  createdBy String?
+  updatedBy String?
+
+  @@map("candidates")
+}
+
+// Education domain
+model Education {
+  id           String   @id @default(cuid())
+  institution  String
+  degree       String
+  fieldOfStudy String
+  startDate    DateTime
+  endDate      DateTime?
+  grade        String?
+  description  String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  // Audit fields
+  createdBy String?
+  updatedBy String?
+
+  @@map("education")
+}
+
+// Experience domain
+model Experience {
+  id          String   @id @default(cuid())
+  company     String
+  position    String
+  startDate   DateTime
+  endDate     DateTime?
+  isCurrent   Boolean  @default(false)
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  // Audit fields
+  createdBy String?
+  updatedBy String?
+
+  @@map("experience")
+}
+
+// Job domain
+model Job {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  requirements String?
+  location    String?
+  type        JobType
+  status      JobStatus @default(OPEN)
+  salaryMin   Int?
+  salaryMax   Int?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  applications Application[]
+
+  // Audit fields
+  createdBy String?
+  updatedBy String?
+
+  @@map("jobs")
+}
+
+enum JobType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERNSHIP
+  FREELANCE
+}
+
+enum JobStatus {
+  DRAFT
+  OPEN
+  CLOSED
+  ON_HOLD
+}
+
+// Application domain
+model Application {
+  id          String   @id @default(cuid())
+  status      ApplicationStatus @default(APPLIED)
+  coverLetter String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  jobId       String
+  job         Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  // Audit fields
+  createdBy String?
+  updatedBy String?
+
+  @@unique([candidateId, jobId])
+  @@map("applications")
+}
+
+enum ApplicationStatus {
+  APPLIED
+  REVIEWING
+  INTERVIEWING
+  OFFERED
+  HIRED
+  REJECTED
+  WITHDRAWN
+}
+
+// File domain
+model File {
+  id          String   @id @default(cuid())
+  filename    String
+  originalName String
+  mimeType    String
+  size        Int
+  path        String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  candidateId String?
+  candidate   Candidate? @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  // Audit fields
+  createdBy String?
+  updatedBy String?
+
+  @@map("files")
+} 
